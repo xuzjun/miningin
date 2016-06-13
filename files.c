@@ -6,7 +6,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include "file.h"
+#include "files.h"
 #include "log.h"
 
 int file_can_exec(const char *path)
@@ -50,4 +50,44 @@ int make_fd_nonblocking(int fd)
 	int flags = 0;
 	flags = fcntl(fd, F_GETFL, NULL);
 	return fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+}
+
+int try_lock_fd(int fd)
+{
+	struct flock fl;
+
+	memset(&fl, 0x00, sizeof(fl));
+	fl.l_type = F_WRLCK; 
+	fl.l_whence = SEEK_SET;
+	if (fcntl(fd, F_SETLK, &fl) == -1)
+		return errno;
+
+	return 0;
+}
+
+int lock_fd(int fd)
+{
+	struct flock fl;
+
+	memset(&fl, 0x00, sizeof(fl));
+	fl.l_type = F_WRLCK; 
+	fl.l_whence = SEEK_SET;
+	if (fcntl(fd, F_SETLKW, &fl) == -1)
+		return -1;
+
+	return 0;
+}
+
+
+int unlock_fd(int fd)
+{
+	struct flock fl;
+
+	memset(&fl, 0x00, sizeof(fl));
+	fl.l_type = F_UNLCK; 
+	fl.l_whence = SEEK_SET;
+	if (fcntl(fd, F_SETLK, &fl) == -1)
+		return -1;
+
+	return 0;
 }
