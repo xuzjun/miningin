@@ -12,5 +12,6 @@ size_t recv_request(int fd, char *buf);
 size_t read_http_head(int fd, char *buf);
 size_t send_response(int fd, const char *buf, size_t len);
 size_t write_sock(int fd, const char *buf, size_t len);
+int socket_handle(int listenfd);
 
 #endif

@@ -44,3 +44,10 @@ char *read_file(const char *path, size_t *len)
 	*len = st.st_size;
 	return buf;
 }
+
+int make_fd_nonblocking(int fd)
+{
+	int flags = 0;
+	flags = fcntl(fd, F_GETFL, NULL);
+	return fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+}

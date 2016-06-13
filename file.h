@@ -7,5 +7,6 @@
 
 int file_can_exec(const char *path);
 char *read_file(const char *path, size_t *len);
+int make_fd_nonblocking(int fd);
 
 #endif

@@ -9,10 +9,13 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/sendfile.h>
+#include <sys/epoll.h>
 #include <sys/uio.h>
 #include <unistd.h>
 #include "log.h"
 #include "connection.h"
+#include "http.h"
+#include "file.h"
 
 int create_listen_socket()
 {
@@ -112,4 +115,47 @@ size_t write_sock(int fd, const char *buf, size_t len)
 		left -= n;
 	}
 	return len - left;
+}
+
+int socket_handle(int listenfd)
+{
+	int epollfd;
+	epollfd = epoll_create1(0);
+
+	struct epoll_event event;
+	event.data.fd = listenfd;
+	event.events = EPOLLIN | EPOLLET;
+	epoll_ctl(epollfd, EPOLL_CTL_ADD | EPOLLIN, listenfd, &event);
+
+	int ready;
+	int i;
+	struct epoll_event *events;
+	events = calloc(32, sizeof(struct epoll_event));
+	int connfd;
+	while (1) {
+		ready = epoll_wait(epollfd, events, 32, -1);
+		for (i = 0; i < ready; ++i) {
+			if (events[i].data.fd == listenfd) {
+				connfd = accept_client(listenfd);
+				if (-1 == connfd) {
+					mlog("accept_client error");
+					return -1;
+				}
+				if (make_fd_nonblocking(connfd) == -1) {
+					mlog("make fd non-blocking error");
+					continue;
+				}
+				event.data.fd = connfd;
+				event.events = EPOLLIN | EPOLLET;
+				epoll_ctl(epollfd, EPOLL_CTL_ADD | EPOLLIN, connfd, &event);
+				continue;
+			} else {
+				connfd = events[i].data.fd;
+				handle_http_request(connfd);
+				epoll_ctl(epollfd, EPOLL_CTL_DEL, connfd, NULL);
+				close(connfd);
+			}
+		}
+	}
+	return 0;
 }
